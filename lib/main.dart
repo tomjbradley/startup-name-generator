@@ -20,20 +20,57 @@ class MyApp extends StatelessWidget {
           onPrimary: Colors.black,
         ),
       ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Startup Name Generator'),
-          centerTitle: true,
-        ),
-        body: const Center(
-          child: RandomWords(),
-        ),
-      ),
+      initialRoute: "/",
+      routes: {
+        "/": (context) => const FirstScreen(),
+        "/second": (context) => const SecondScreen(),
+      },
     );
   }
   // #enddocregion build
 }
-// #enddocregion MyApp
+
+class FirstScreen extends StatelessWidget {
+  const FirstScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Startup Name Generator'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.format_list_bulleted),
+            onPressed: () {
+              Navigator.pushNamed(context, '/second');
+            },
+          )
+        ],
+      ),
+      body: const Center(
+        child: RandomWords(),
+      ),
+    );
+  }
+}
+
+class SecondScreen extends StatelessWidget {
+  const SecondScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Saved suggestions'),
+        centerTitle: true,
+      ),
+      body: const Center(
+        child: Text("Second Screen"),
+      ),
+    );
+  }
+}
 
 // #docregion RWS-var
 class _RandomWordsState extends State<RandomWords> {
