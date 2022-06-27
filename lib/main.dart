@@ -1,7 +1,3 @@
-// Copyright 2018 The Flutter team. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 
@@ -18,9 +14,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Startup Name Generator',
+      theme: ThemeData(
+        colorScheme: const ColorScheme.light(
+          primary: Colors.white,
+          onPrimary: Colors.black,
+        ),
+      ),
       home: Scaffold(
         appBar: AppBar(
           title: const Text('Startup Name Generator'),
+          centerTitle: true,
         ),
         body: const Center(
           child: RandomWords(),
