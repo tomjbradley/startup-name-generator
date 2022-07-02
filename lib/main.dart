@@ -3,11 +3,11 @@ import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends StatelessWidget {
+  const App({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -19,17 +19,40 @@ class MyApp extends StatelessWidget {
           onPrimary: Colors.black,
         ),
       ),
-      initialRoute: "/",
-      routes: {
-        "/": (context) => const FirstScreen(),
-        "/second": (context) => const SecondScreen(),
-      },
+      home: const HomeRoute(),
     );
   }
 }
 
-class FirstScreen extends StatelessWidget {
-  const FirstScreen({Key? key}) : super(key: key);
+class HomeRoute extends StatefulWidget {
+  const HomeRoute({super.key});
+
+  @override
+  State<HomeRoute> createState() => _HomeRouteState();
+}
+
+class _HomeRouteState extends State<HomeRoute> {
+  final List<WordPair> _suggestions = [];
+  List<String> _savedNames = [];
+
+  void saveName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _savedNames = (prefs.getStringList("names") ?? [])..add(name);
+      prefs.setStringList('names', _savedNames);
+    });
+  }
+
+  void unsaveName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _savedNames = (prefs.getStringList("names") ?? [])..remove(name);
+      prefs.setStringList(
+          'names', (prefs.getStringList("names") ?? [])..remove(name));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,42 +64,76 @@ class FirstScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.format_list_bulleted),
             onPressed: () {
-              Navigator.pushNamed(context, '/second');
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SavedSuggestionsRoute()));
             },
           )
         ],
       ),
-      body: const Center(
-        child: RandomWords(),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemBuilder: (context, i) {
+          if (i.isOdd) return const Divider();
+
+          final index = i ~/ 2;
+
+          if (index >= _suggestions.length) {
+            _suggestions.addAll(generateWordPairs().take(10));
+          }
+
+          String suggestion = _suggestions[index].asPascalCase;
+
+          return ListTile(
+            title: Text(
+              suggestion,
+            ),
+            trailing: IconButton(
+              icon: (_savedNames.contains(suggestion)
+                  ? const Icon(
+                      Icons.favorite,
+                      color: Colors.pink,
+                    )
+                  : const Icon(Icons.favorite_outline)),
+              onPressed: () {
+                setState(() {
+                  if (_savedNames.contains(suggestion)) {
+                    unsaveName(suggestion);
+                  } else {
+                    saveName(suggestion);
+                  }
+                });
+              },
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class SecondScreen extends StatefulWidget {
-  const SecondScreen({super.key});
+class SavedSuggestionsRoute extends StatefulWidget {
+  const SavedSuggestionsRoute({Key? key}) : super(key: key);
 
   @override
-  State<SecondScreen> createState() => _SecondScreenState();
+  State<SavedSuggestionsRoute> createState() => _SavedSuggestionsRouteState();
 }
 
-class _SecondScreenState extends State<SecondScreen> {
-  final _biggerFont = const TextStyle(fontSize: 18);
-  List<String> names = [];
+class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
+  List<String> _names = [];
+
+  void loadNames() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _names = prefs.getStringList("names") ?? [];
+    });
+  }
 
   @override
   void initState() {
-    _getNames();
     super.initState();
-  }
-
-  void _getNames() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? response = prefs.getStringList("saved_names");
-
-    setState(() {
-      names = response ?? [];
-    });
+    loadNames();
   }
 
   @override
@@ -86,103 +143,18 @@ class _SecondScreenState extends State<SecondScreen> {
         title: const Text('Saved suggestions'),
         centerTitle: true,
       ),
-      body: Center(
-        child: ListView(children: [
-          for (var name in names)
-            ListTile(
-              title: Text(name),
-            ),
-        ]),
+      body: ListView.builder(
+        itemCount: (_names.isNotEmpty ? _names.length * 2 - 1 : 0),
+        itemBuilder: (context, i) {
+          if (i.isOdd && _names.length != 1) return const Divider();
+
+          final index = i ~/ 2;
+
+          return ListTile(
+            title: Text(_names[index]),
+          );
+        },
       ),
     );
   }
-}
-
-class _RandomWordsState extends State<RandomWords> {
-  final _suggestions = <WordPair>[];
-  final _biggerFont = const TextStyle(fontSize: 18);
-  List<String> _savedNames = <String>[];
-
-  @override
-  void initState() {
-    _getNames();
-    super.initState();
-  }
-
-  void _getNames() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? response = prefs.getStringList("saved_names");
-
-    setState(() {
-      _savedNames = response ?? [];
-    });
-  }
-
-  _saveName(String name) async {
-    setState(() {
-      _savedNames.add(name);
-
-      _savedNames = _savedNames;
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setStringList('saved_names', _savedNames);
-  }
-
-  _removeName(String name) async {
-    setState(() {
-      _savedNames.remove(name);
-
-      _savedNames = _savedNames;
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setStringList('saved_names', _savedNames);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemBuilder: (context, i) {
-        if (i.isOdd) return const Divider();
-
-        final index = i ~/ 2;
-        if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10));
-        }
-
-        return ListTile(
-          title: Text(
-            _suggestions[index].asPascalCase,
-            style: _biggerFont,
-          ),
-          trailing: IconButton(
-            icon: (!_savedNames.contains(_suggestions[index].asPascalCase))
-                ? Icon(Icons.favorite_outline)
-                : Icon(
-                    Icons.favorite,
-                    color: Colors.pink,
-                  ),
-            onPressed: () {
-              if (_savedNames.contains(_suggestions[index].asPascalCase)) {
-                _removeName(_suggestions[index].asPascalCase);
-              } else {
-                _saveName(_suggestions[index].asPascalCase);
-              }
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-class RandomWords extends StatefulWidget {
-  const RandomWords({super.key});
-
-  @override
-  State<RandomWords> createState() => _RandomWordsState();
 }
