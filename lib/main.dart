@@ -53,7 +53,7 @@ class _AppState extends State<App> {
             prefs.setString("theme", newValue);
           });
         },
-        suggestions: [],
+        suggestions: const [],
       ),
     );
   }
