@@ -53,29 +53,36 @@ class _AppState extends State<App> {
             prefs.setString("theme", newValue);
           });
         },
+        suggestions: [],
       ),
     );
   }
 }
 
 class HomeRoute extends StatefulWidget {
-  const HomeRoute({super.key, required this.updateTheme});
+  const HomeRoute(
+      {super.key, required this.updateTheme, required this.suggestions});
 
   final Function updateTheme;
+  final List<WordPair> suggestions;
 
   @override
   State<HomeRoute> createState() => _HomeRouteState();
 }
 
 class _HomeRouteState extends State<HomeRoute> {
-  final List<WordPair> _suggestions = [];
   String _dropdownValue = "Light";
   List<String> _savedNames = [];
+  List<WordPair> _suggestions = [];
 
   @override
   void initState() {
     super.initState();
     loadTheme();
+    loadNames();
+    setState(() {
+      _suggestions = widget.suggestions;
+    });
   }
 
   void loadTheme() async {
@@ -83,6 +90,13 @@ class _HomeRouteState extends State<HomeRoute> {
 
     setState(() {
       _dropdownValue = prefs.getString("theme") ?? "Light";
+    });
+  }
+
+  void loadNames() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _savedNames = prefs.getStringList("names") ?? [];
     });
   }
 
@@ -122,6 +136,7 @@ class _HomeRouteState extends State<HomeRoute> {
                     onUpdateTheme: (newValue) {
                       widget.updateTheme(newValue);
                     },
+                    suggestions: _suggestions,
                   ),
                 ),
               );
@@ -248,9 +263,11 @@ class _HomeRouteState extends State<HomeRoute> {
 }
 
 class SavedSuggestionsRoute extends StatefulWidget {
-  const SavedSuggestionsRoute({super.key, required this.onUpdateTheme});
+  const SavedSuggestionsRoute(
+      {super.key, required this.onUpdateTheme, required this.suggestions});
 
   final Function onUpdateTheme;
+  final List<WordPair> suggestions;
 
   @override
   State<SavedSuggestionsRoute> createState() => _SavedSuggestionsRouteState();
@@ -346,6 +363,7 @@ class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
                   updateTheme: (newValue) {
                     widget.onUpdateTheme(newValue);
                   },
+                  suggestions: widget.suggestions,
                 ),
               ),
             );
