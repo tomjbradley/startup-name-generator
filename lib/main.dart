@@ -40,7 +40,9 @@ class _AppState extends State<App> {
                 onPrimary: Colors.black,
               )
             : const ColorScheme.dark(
-                primary: Colors.black, onPrimary: Colors.white)),
+                primary: Colors.black,
+                onPrimary: Colors.white,
+              )),
       ),
       home: HomeRoute(
         updateTheme: (newValue) async {
@@ -211,7 +213,8 @@ class _HomeRouteState extends State<HomeRoute> {
           final index = i ~/ 2;
 
           if (index >= _suggestions.length) {
-            _suggestions.addAll(generateWordPairs().take(10));
+            _suggestions.addAll(List.from(Set.from(generateWordPairs().take(10))
+                .difference(Set.from(_savedNames))));
           }
 
           String suggestion = _suggestions[index].asPascalCase;
@@ -288,6 +291,46 @@ class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
     });
   }
 
+  final TextEditingController _textFieldController = TextEditingController();
+  String _valueText = "";
+
+  Future<void> _displayTextInputDialog(BuildContext context) async {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Add a name to the list'),
+            content: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _valueText = value;
+                });
+              },
+              controller: _textFieldController,
+            ),
+            actions: <Widget>[
+              ElevatedButton(
+                child: const Text('Close'),
+                onPressed: () {
+                  setState(() {
+                    Navigator.pop(context);
+                  });
+                },
+              ),
+              ElevatedButton(
+                child: const Text('Add'),
+                onPressed: () {
+                  setState(() {
+                    saveName(_valueText);
+                    Navigator.pop(context);
+                  });
+                },
+              ),
+            ],
+          );
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -307,6 +350,16 @@ class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
               ),
             );
           },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _displayTextInputDialog(context);
+        },
+        backgroundColor: Theme.of(context).colorScheme.onPrimary,
+        child: Icon(
+          Icons.add,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       body: ListView.builder(
