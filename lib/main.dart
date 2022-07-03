@@ -6,26 +6,60 @@ void main() {
   runApp(const App());
 }
 
-class App extends StatelessWidget {
-  const App({super.key});
+class App extends StatefulWidget {
+  const App({Key? key}) : super(key: key);
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  String _theme = "Light";
+
+  void loadTheme() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _theme = prefs.getString("theme") ?? "Light";
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadTheme();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Startup Name Generator',
       theme: ThemeData(
-        colorScheme: const ColorScheme.light(
-          primary: Colors.white,
-          onPrimary: Colors.black,
-        ),
+        colorScheme: (_theme == "Light"
+            ? const ColorScheme.light(
+                primary: Colors.white,
+                onPrimary: Colors.black,
+              )
+            : const ColorScheme.dark(
+                primary: Colors.black, onPrimary: Colors.white)),
       ),
-      home: const HomeRoute(),
+      home: HomeRoute(
+        updateTheme: (newValue) async {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+
+          setState(() {
+            _theme = newValue;
+            prefs.setString("theme", newValue);
+          });
+        },
+      ),
     );
   }
 }
 
 class HomeRoute extends StatefulWidget {
-  const HomeRoute({super.key});
+  const HomeRoute({super.key, required this.updateTheme});
+
+  final Function updateTheme;
 
   @override
   State<HomeRoute> createState() => _HomeRouteState();
@@ -33,7 +67,22 @@ class HomeRoute extends StatefulWidget {
 
 class _HomeRouteState extends State<HomeRoute> {
   final List<WordPair> _suggestions = [];
+  String _dropdownValue = "Light";
   List<String> _savedNames = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadTheme();
+  }
+
+  void loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _dropdownValue = prefs.getString("theme") ?? "Light";
+    });
+  }
 
   void saveName(String name) async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,15 +111,97 @@ class _HomeRouteState extends State<HomeRoute> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.format_list_bulleted),
-            onPressed: () {
+            icon: const Icon(Icons.list),
+            onPressed: () async {
               Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const SavedSuggestionsRoute()));
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SavedSuggestionsRoute(
+                    onUpdateTheme: (newValue) {
+                      widget.updateTheme(newValue);
+                    },
+                  ),
+                ),
+              );
             },
-          )
+          ),
         ],
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      drawer: Drawer(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Settings",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18.0,
+                ),
+              ),
+              const Text("Version 1.0.0"),
+              Builder(
+                builder: (context) => TextButton(
+                  onPressed: () async {
+                    SharedPreferences prefs =
+                        await SharedPreferences.getInstance();
+                    prefs.clear();
+
+                    if (!mounted) return;
+                    Scaffold.of(context).closeDrawer();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Local data cleared.'),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: const Text(
+                    "Clear local data",
+                    style: TextStyle(
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 30.0),
+                child: Text(
+                  "Theme",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              DropdownButton(
+                value: _dropdownValue,
+                items: <String>["Light", "Dark"]
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _dropdownValue = newValue!;
+                    widget.updateTheme(newValue);
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
@@ -114,7 +245,9 @@ class _HomeRouteState extends State<HomeRoute> {
 }
 
 class SavedSuggestionsRoute extends StatefulWidget {
-  const SavedSuggestionsRoute({Key? key}) : super(key: key);
+  const SavedSuggestionsRoute({super.key, required this.onUpdateTheme});
+
+  final Function onUpdateTheme;
 
   @override
   State<SavedSuggestionsRoute> createState() => _SavedSuggestionsRouteState();
@@ -122,6 +255,15 @@ class SavedSuggestionsRoute extends StatefulWidget {
 
 class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
   List<String> _names = [];
+
+  void saveName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _names = (prefs.getStringList("names") ?? [])..add(name);
+      prefs.setStringList('names', _names);
+    });
+  }
 
   void loadNames() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -136,12 +278,36 @@ class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
     loadNames();
   }
 
+  void unsaveName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _names = (prefs.getStringList("names") ?? [])..remove(name);
+      prefs.setStringList(
+          'names', (prefs.getStringList("names") ?? [])..remove(name));
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Saved suggestions'),
         centerTitle: true,
+        leading: BackButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomeRoute(
+                  updateTheme: (newValue) {
+                    widget.onUpdateTheme(newValue);
+                  },
+                ),
+              ),
+            );
+          },
+        ),
       ),
       body: ListView.builder(
         itemCount: (_names.isNotEmpty ? _names.length * 2 - 1 : 0),
@@ -152,6 +318,30 @@ class _SavedSuggestionsRouteState extends State<SavedSuggestionsRoute> {
 
           return ListTile(
             title: Text(_names[index]),
+            trailing: IconButton(
+              icon: const Icon(
+                Icons.remove_circle,
+                color: Colors.red,
+              ),
+              onPressed: () {
+                String name = _names[index];
+
+                setState(() {
+                  unsaveName(name);
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Name removed from list.'),
+                    action: SnackBarAction(
+                      label: 'Undo',
+                      onPressed: () {
+                        saveName(name);
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
