@@ -53,7 +53,6 @@ class _AppState extends State<App> {
             prefs.setString("theme", newValue);
           });
         },
-        suggestions: const [],
       ),
     );
   }
@@ -61,7 +60,7 @@ class _AppState extends State<App> {
 
 class HomeRoute extends StatefulWidget {
   const HomeRoute(
-      {super.key, required this.updateTheme, required this.suggestions});
+      {super.key, required this.updateTheme, this.suggestions = const []});
 
   final Function updateTheme;
   final List<WordPair> suggestions;
@@ -81,7 +80,7 @@ class _HomeRouteState extends State<HomeRoute> {
     loadTheme();
     loadNames();
     setState(() {
-      _suggestions = widget.suggestions;
+      _suggestions = [...widget.suggestions];
     });
   }
 
